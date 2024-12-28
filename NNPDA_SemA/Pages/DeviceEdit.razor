@@ -1,0 +1,350 @@
+﻿@page "/device/{id:int}"
+@using NNPDA_SemA.Entities
+@using System.Net.Http.Headers
+ @using System.Timers
+@using NNPDA_SemA.Services
+@inject AuthHttpClient _httpClient
+@inject IDialogService _dialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Moje zařízení</PageTitle>
+
+<div class="d-flex flex-grow-0 gap-4 align-center">
+    <MudText Typo="Typo.h3" GutterBottom="true">Zařízení</MudText>
+
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Warning">@_errorMessage</MudAlert>
+}
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <MudAlert Severity="Severity.Success">@_successMessage</MudAlert>
+}
+
+<MudGrid>
+    <MudItem xs="12" sm="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h4" GutterBottom="true">Upravit zařízení</MudText>
+        <MudPaper Class="pa-4">
+
+            <MudForm>
+                <MudTextField T="string" @bind-Value="@_device.Name" Label="Název" Required="true" RequiredError="Název je požadován!"/>
+
+            </MudForm>
+            </MudPaper>
+            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="Update">
+                @if (_processing)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                    <MudText Class="ms-2">Zpracovávám</MudText>
+                }
+                else
+                {
+                    <MudText>Upravit</MudText>
+                }
+            </MudButton>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudPaper Class="pa-4">
+            <div class="d-flex flex-grow-0 gap-4 align-center">
+
+                <MudText Typo="Typo.h4" GutterBottom="true">Senzory</MudText>
+                <MudButton OnClick="@CreateSensor" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Add" Color="Color.Info" Size="Size.Small">Přidat</MudButton>
+            </div>
+            <MudSimpleTable Style="overflow-x: auto;">
+                <thead>
+                <tr>
+                    @foreach (var h in new[] { "ID", "Jméno", "Akce" })
+                    {
+                        <th>@h</th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in _device.Sensors)
+                {
+                    <tr>
+                        <td> @row.Id</td>
+                        <td> @row.Name</td>
+                        <td>
+                            <MudButton OnClick="@(() => DeleteSensor(row))" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small">Smazat</MudButton>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="12">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h4" GutterBottom="true">Generátor měření</MudText>
+            <MudForm>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="5">
+                        <MudSelect @bind-Value="_selectedSensor" T="int" Label="Senzor" AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var sensor in _device.Sensors)
+                            {
+                                <MudSelectItem Value="@(sensor.Id)">@sensor.Name</MudSelectItem>
+
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3"> 
+                        <MudNumericField @bind-Value="_maxVal" Label="Rnd od 0 do" Variant="Variant.Text"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="3"> 
+                        <MudNumericField @bind-Value="_everySec" Label="Každých sekund" Variant="Variant.Text"/>
+                    </MudItem>
+                    <MudItem xs="12" sm="2">
+                        <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" OnClick="Generate">
+                            @if (_generating)
+                            {
+                                <MudText>Zastavit</MudText>
+                            }
+                            else
+                            {
+                                <MudText>Spustit</MudText>
+                            }
+                        </MudButton>
+                    </MudItem>
+
+                </MudGrid>
+            </MudForm>
+
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="12">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h4" GutterBottom="true">Přidat měření</MudText>
+            <MudForm>
+
+            <MudGrid>
+                <MudItem xs="12" sm="5">
+                        <MudSelect @bind-Value="_measure.SensorId" T="int" Label="Senzor" AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var sensor in _device.Sensors)
+                            {
+                                <MudSelectItem Value="@(sensor.Id)">@sensor.Name</MudSelectItem>
+
+                            }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3"> 
+                    <MudNumericField @bind-Value="_measure.Value" Label="Hodnota" Variant="Variant.Text"/>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudCheckBox @bind-Checked="@Randomize" Label="Náhodnost s maximem"></MudCheckBox>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="AddMeasure">
+                        @if (_processing)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">Zpracovávám</MudText>
+                        }
+                        else
+                        {
+                            <MudText>Přidat</MudText>
+                        }
+                    </MudButton>
+                </MudItem>
+
+            </MudGrid>
+            </MudForm>
+
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="12">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h4" GutterBottom="true">Data</MudText>
+        <MudPaper Class="pa-4">
+
+            <MudSimpleTable Style="overflow-x: auto;">
+                <thead>
+                <tr>
+                    @foreach (var h in new[] { "ID", "Senzor", "Hodnota", "Akce" })
+                    {
+                        <th>@h</th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var sensor in _device.Sensors)
+                {
+                        @foreach (var measure in sensor.Measures)
+                        {
+                            <tr>
+                                    <td> @measure.Id</td>
+                                    <td> @sensor.Id</td>
+                                    <td> @measure.Value</td>
+                                    <td>
+                                        <MudButton OnClick="@(() => DeleteMeasure(measure))" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small">Smazat</MudButton>
+                                    </td>
+                            </tr>
+                        }
+                }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    private bool _processing = false;
+    private Device _device = new();
+    private Measure _measure = new();
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+    private bool Randomize { get; set; } = false;
+
+    private int _selectedSensor = 0;
+    private int _maxVal = 10;
+    private int _everySec = 10;
+    private bool _generating = false;
+    private System.Timers.Timer _timer = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _timer.Elapsed += new ElapsedEventHandler(GenerationHandler);
+        var response = await _httpClient.GetAsync("/api/v1/device/" + Id);
+        if (response.IsSuccessStatusCode)
+        {
+            _device = await response.Content.ReadFromJsonAsync<Device>();
+        }
+        else
+        {
+            _errorMessage = "Nepodařilo se načíst";
+        }
+    }
+    private async Task Update()
+    {
+        _processing = true;
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/device", _device);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Zařízení upraveno";
+
+        _processing = false;
+    }
+
+    private async Task DeleteSensor(Sensor row)
+    {
+        _processing = true;
+        var response = await _httpClient.DeleteAsync("/api/v1/sensor/" + row.Id);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Senzor smazán";
+        _device.Sensors.RemoveAll(d => d.Id == row.Id);
+
+        _processing = false;
+    }
+
+    private async Task CreateSensor()
+    {
+
+        var dialog = _dialogService.Show<NewSensorDialog>();
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            Sensor sensor = result.Data as Sensor;
+            sensor.DeviceId = _device.Id;
+
+            _processing = true;
+            var response = await _httpClient.PostAsJsonAsync("/api/v1/sensor", sensor);
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = "Nepodařilo se";
+                _processing = false;
+                return;
+            }
+            _successMessage = "Senzor přidán";
+
+            _device.Sensors.Add(await response.Content.ReadFromJsonAsync<Sensor>());
+
+
+            _processing = false;
+        }
+    }
+
+    private async Task AddMeasure()
+    {
+        _processing = true;
+        var newMeasure = new Measure(_measure.Id, _measure.Value, _measure.SensorId);
+        if(Randomize)
+            {
+                Random random = new();
+                newMeasure.Value = random.Next(0, _measure.Value);
+            }
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/measure", newMeasure);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Měření přidáno";
+        _device.Sensors.Where(s => s.Id == _measure.SensorId).First().Measures.Add(await response.Content.ReadFromJsonAsync<Measure>());
+        _processing = false;
+    }
+
+    private async Task DeleteMeasure(Measure measure)
+    {
+        _processing = true;
+        var response = await _httpClient.DeleteAsync("/api/v1/measure/" + measure.Id);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Měření smazáno";
+        foreach (var sensor in _device.Sensors)
+        {
+            sensor.Measures.RemoveAll(d => d.Id == measure.Id);
+
+        }
+
+        _processing = false;
+    }
+    private async Task Generate()
+    {
+        _generating = !_generating;
+        _timer.Interval = _everySec * 1000;
+        _timer.Enabled = _generating;
+    }
+    private async void GenerationHandler(object source, ElapsedEventArgs e)
+    {
+        var newMeasure = new Measure(0, _maxVal,_selectedSensor);
+
+        Random random = new();
+        newMeasure.Value = random.Next(0, _maxVal);
+        
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/measure", newMeasure);
+        if (!response.IsSuccessStatusCode)
+        {
+            Snackbar.Add($"Měření se nepodařilo přidat", Severity.Error);
+            return;
+        }
+        var measure = await response.Content.ReadFromJsonAsync<Measure>();
+        _device.Sensors.First(s => s.Id == _selectedSensor).Measures.Add(measure);
+        Snackbar.Add($"Měření bylo přidáno s hodnotou {newMeasure.Value}", Severity.Success);
+        StateHasChanged();
+    }
+}

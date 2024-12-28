@@ -1,0 +1,129 @@
+﻿@page "/devices"
+@using NNPDA_SemA.Entities
+@using System.Net.Http.Headers
+@using NNPDA_SemA.Services
+@inject AuthHttpClient _httpClient
+<PageTitle>Moje zařízení</PageTitle>
+
+<div class="d-flex flex-grow-0 gap-4 align-center">
+    <MudText Typo="Typo.h3" GutterBottom="true">Moje zařízení</MudText>
+</div>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Warning">@_errorMessage</MudAlert>
+}
+@if (!string.IsNullOrEmpty(_successMessage))
+{
+    <MudAlert Severity="Severity.Success">@_successMessage</MudAlert>
+}
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Moje zařízení">
+        <MudSimpleTable Style="overflow-x: auto;">
+            <thead>
+            <tr>
+                @foreach (var h in headings)
+                {
+                    <th>@h</th>
+                }
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in _devices)
+            {
+                <tr>
+                    <td> @row.Id</td>
+                    <td> @row.Name</td>
+                    <td>
+                        <MudLink Href="@("/device/" + row.Id)">
+                            <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small">Upravit</MudButton>
+                        </MudLink>
+                        <MudButton OnClick="@(() => Delete(row))" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small">Smazat</MudButton>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </MudSimpleTable>
+    </MudTabPanel>
+    <MudTabPanel Text="Nové zařízení">
+        <MudGrid>
+            <MudItem xs="12" sm="12">
+                <MudPaper Class="pa-4">
+                    <MudForm>
+                        <MudTextField T="string" @bind-Value="@_newDeviceRequest.Name" Label="Název" Required="true" RequiredError="Název je požadován!" />
+
+                    </MudForm>
+                    <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="CreateDevice">
+                        @if (_processing)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                            <MudText Class="ms-2">Zpracovávám</MudText>
+                        }
+                        else
+                        {
+                            <MudText>Vytvořit</MudText>
+                        }
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private bool _processing = false;
+    private NewDeviceRequest _newDeviceRequest = new();
+    private List<Device> _devices = new();
+    string[] headings = { "ID", "Name", "Akce" };
+    private string _errorMessage = string.Empty;
+    private string _successMessage = string.Empty;
+    protected override async Task OnInitializedAsync()
+    {
+        //_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "eyJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidGVqa3lzQGVtYWlsLmN6Iiwic3ViIjoidGVqa3lzQGVtYWlsLmN6IiwiaWF0IjoxNjk5MTkyNDgwLCJleHAiOjE2OTkyNzg4ODB9.zqQlGLYeRM4JhiGhmPu2sFDkpcRl8fsF4XAL7lbioto");
+
+        var response = await _httpClient.GetAsync("/api/v1/user/getMyDevices");
+        if (response.IsSuccessStatusCode)
+        {
+            _devices = await response.Content.ReadFromJsonAsync<List<Device>>();
+
+        }
+    }
+    private async Task CreateDevice()
+    {
+        _processing = true;
+        var response = await _httpClient.PostAsJsonAsync("/api/v1/device", _newDeviceRequest);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Zařízení vytvořeno";
+
+        _devices.Add(await response.Content.ReadFromJsonAsync<Device>());
+        
+        _processing = false;
+    }
+
+
+    private async Task Delete(Device row)
+    {
+        _processing = true;
+        var response = await _httpClient.DeleteAsync("/api/v1/device/" + row.Id);
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Nepodařilo se";
+            _processing = false;
+            return;
+        }
+        _successMessage = "Zařízení smazáno";
+
+        _successMessage = await response.Content.ReadAsStringAsync();
+
+        _devices.RemoveAll(d => d.Id == row.Id);
+
+        _processing = false;
+    }
+
+}

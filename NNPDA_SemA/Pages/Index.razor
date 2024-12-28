@@ -1,0 +1,123 @@
+﻿@page "/"
+
+<PageTitle>Index</PageTitle>
+<AuthorizeView>
+
+    <Authorized>
+        <MudAlert Severity="Severity.Success">Jste přihlášen</MudAlert>
+    </Authorized>
+    <NotAuthorized>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Warning">@_errorMessage</MudAlert>
+        }
+        @if (!string.IsNullOrEmpty(_successMessage))
+        {
+            <MudAlert Severity="Severity.Success">@_successMessage</MudAlert>
+        }
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+            <MudTabPanel Text="Přihlášení">
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4">
+                            <MudForm @ref="_form">
+                                <MudTextField T="string" @bind-Value="@_loginRequest.Email" Label="Email" Required="true" RequiredError="Email je vyžadován!"/>
+                                <MudTextField T="string" @bind-Value="@_loginRequest.Password" Label="Heslo" InputType="InputType.Password" Required="true" RequiredError="Heslo je vyžadováno!"/>
+                            </MudForm>
+                            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true" Disabled="@_processing" OnClick="LogIn">
+                                @if (_processing)
+                                {
+                                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                    <MudText Class="ms-2">Zpracovávám</MudText>
+                                }
+                                else
+                                {
+                                    <MudText>Přihlásit se</MudText>
+                                }
+                            </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+            </MudTabPanel>
+            <MudTabPanel Text="Registrace">
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4">
+                            <MudForm @ref="_form">
+                                <MudTextField T="string" @bind-Value="@_registerRequest.FirstName" Label="Jméno" Required="true" RequiredError="Jméno je požadováno!"/>
+                                <MudTextField T="string" @bind-Value="@_registerRequest.LastName" Label="Příjmení" Required="true" RequiredError="Příjmení je požadováno!"/>
+                                <MudTextField T="string" @bind-Value="@_registerRequest.Email" Label="Email" Required="true" RequiredError="Email je požadován!"/>
+                                <MudTextField T="string" @bind-Value="@_registerRequest.Password" Label="Heslo" InputType="InputType.Password" Validation="@(new Func<string, IEnumerable<string>>(PasswordStrength))" Required="true" RequiredError="Heslo je vyžadováno!"/>
+                                <MudTextField T="string" Label="Heslo znova" InputType="InputType.Password" Validation="@(new Func<string, string>(PasswordMatch))"/>
+                            </MudForm>
+                            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="Register">
+                                @if (_processing)
+                                {
+                                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                    <MudText Class="ms-2">Zpracovávám</MudText>
+                                }
+                                else
+                                {
+                                    <MudText>Registrovat se</MudText>
+                                }
+                            </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+            </MudTabPanel>
+            <MudTabPanel Text="Žádost o obnovu hesla">
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4">
+                            <MudForm @ref="_form">
+                                <MudTextField T="string" @bind-Value="@_recoverPasswordRequest.Email" Label="Email" Required="true" RequiredError="Email je požadován!" />
+                            </MudForm>
+                            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="RequestToken">
+                                @if (_processing)
+                                {
+                                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                    <MudText Class="ms-2">Zpracovávám</MudText>
+                                }
+                                else
+                                {
+                                    <MudText>Zaslat na email</MudText>
+                                }
+                            </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+            </MudTabPanel>
+            <MudTabPanel Text="Mám token pro obnovu hesla">
+                <MudGrid>
+                    <MudItem xs="12" sm="12">
+                        <MudPaper Class="pa-4">
+                            <MudForm @ref="_form">
+                                <MudTextField T="string" @bind-Value="@_passwordRecoveryRequest.Username" Label="Email" Required="true" RequiredError="Email je požadován!" />
+                                <MudTextField T="string" @bind-Value="@_passwordRecoveryRequest.Token" Label="Token" Required="true" RequiredError="Token vyžadován!" />
+                                <MudTextField T="string" @bind-Value="@_passwordRecoveryRequest.NewPassword" Label="Nové heslo" InputType="InputType.Password" Validation="@(new Func<string, IEnumerable<string>>(PasswordStrength))" Required="true" RequiredError="Heslo je vyžadováno!" />
+                                <MudTextField T="string" @bind-Value="@_passwordRecoveryRequest.NewPasswordAgain" Label="Heslo znova" InputType="InputType.Password" />
+
+                            </MudForm>
+                            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_processing" DisableElevation="true" OnClick="ChangePassword">
+                                @if (_processing)
+                                {
+                                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                    <MudText Class="ms-2">Zpracovávám</MudText>
+                                }
+                                else
+                                {
+                                    <MudText>Změnit heslo</MudText>
+                                }
+                            </MudButton>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+            </MudTabPanel>
+
+        </MudTabs>
+    </NotAuthorized>
+</AuthorizeView>

@@ -1,0 +1,43 @@
+﻿@using System.Security.Claims
+@using NNPDA_SemA.Entities
+@using NNPDA_SemA.Services
+@inject AuthStateProvider _authenticationStateProvider
+@inject NavigationManager _navigationManager
+<MudNavMenu>
+    <AuthorizeView>
+    <Authorized>
+        <MudAlert Severity="Severity.Success">
+            @_loggedInUser?.Username
+        </MudAlert>
+        <MudNavLink Href="devices" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.DeviceHub">Moje zařízení</MudNavLink>
+        <MudNavLink OnClick="Logout" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Logout">Odhlásit</MudNavLink>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="/" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountBox">Přihlášení</MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</MudNavMenu>
+@code {
+    private User _loggedInUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loggedInUser = await _authenticationStateProvider.GetUser();
+    }
+
+    private async Task Logout()
+    {
+        await _authenticationStateProvider.Logout();
+        _navigationManager.NavigateTo("/");
+
+    }
+    private async Task<AuthenticationState> GetAuthenticationStateAsync()
+    {
+        return await _authenticationStateProvider.GetAuthenticationStateAsync();
+    }
+    private async Task<ClaimsPrincipal> GetUserAsync()
+    {
+        var authenticationState = await GetAuthenticationStateAsync();
+        return authenticationState.User;
+    }
+}
